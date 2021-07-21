@@ -126,11 +126,16 @@ class ActionHandler {
     };
 
     bool isConnected = await InternetConnectionChecker().hasConnection;
+    print("starting to send message...");
+    print("is connected (InternetConnectionChecker)? $isConnected");
+    print("internal socket connection state: ${SocketManager().state}");
     if (!isConnected) {
+      print("setting check interval...");
       InternetConnectionChecker().checkInterval = Duration(seconds: 1);
       StreamSubscription? sub;
       StreamSubscription? sub2;
       Timer timer = Timer(Duration(seconds: 30), () async {
+        print("message timed out");
         sub?.cancel();
         sub2?.cancel();
         String? tempGuid = message.guid;
@@ -142,22 +147,32 @@ class ActionHandler {
         completer.complete();
         return completer.future;
       });
+      print("listening to status change... (InternetConnectionChecker)");
       sub = InternetConnectionChecker().onStatusChange.listen((event) {
+        print("status changed: $event");
         /// listen to the internet status. we only want to fire callbacks when we
         /// are connected
         if (event == InternetConnectionStatus.connected) {
+          print("connected! attempting to send message...");
           /// Check our internal status. If we are connected *and* we haven't
           /// listened to the connection state stream, then send the message
+          print("internal socket connection state: ${SocketManager().state}");
+          print("subscribed to connectionStateStream? ${sub2 != null}");
           if (SocketManager().state == SocketState.CONNECTED && sub2 == null) {
+            print("both are connected! sending message without subscribing to stream...");
             timer.cancel();
             sendSocketMessage();
             sub?.cancel();
             sub2?.cancel();
           } else {
+            print("listening to status change... (connectionStateStream)");
             /// Otherwise listen to our stream and await the socket to be connected
             /// before doing anything
             sub2 = SocketManager().connectionStateStream.listen((event2) {
+              print("status changed: $event2");
+              print("current InternetConnectionStatus: $event");
               if (event2 == SocketState.CONNECTED && event == InternetConnectionStatus.connected) {
+                print("both are connected! sending message...");
                 timer.cancel();
                 sendSocketMessage();
                 sub?.cancel();
@@ -168,6 +183,7 @@ class ActionHandler {
         }
       });
     } else {
+      print("connected! sending message...");
       sendSocketMessage();
     }
 

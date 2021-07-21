@@ -673,6 +673,8 @@ class SocketManager {
             completer.complete(response);
             if (awaitResponse) _manager.finishSocketProcess(_processId);
           });
+          print("acks: " + _manager.socket!.acks.toString());
+          print("send buffer: " + _manager.socket!.sendBuffer.toString());
         } else {
           _manager.socket!.emitWithAck(event, message, ack: (response) async {
             await MethodChannelInterface().invokeMethod("download-file", {
